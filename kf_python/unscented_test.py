@@ -12,10 +12,8 @@ Q = np.array([[1.2, 0.25],
               [0.25, 1.2]])
 
 
-def tr_f(x, u):
-    rng = np.random.default_rng()
+def tr_f(x, u, delta_t=1):
     noise = rng.multivariate_normal([0, 0], R)
-
     return x + u ** 2 + noise
 
 
@@ -34,7 +32,7 @@ if __name__ == '__main__':
 
     rng = np.random.default_rng()
 
-    NUM_EXPERIMENTS = 100
+    NUM_EXPERIMENTS = 5
     absdif_filt = absdif_obs = 0
 
     kf = UnscentedKF(f=tr_f, h=obs_f, R=R, Q=Q, L=n, alpha=np.sqrt(3), beta=2, kappa=1)
@@ -46,7 +44,7 @@ if __name__ == '__main__':
             z[i + 1] = obs_f(x[i + 1])
 
         start_cov = R
-        m, c = kf.run(x[0], start_cov, u, z, N)
+        m, c = kf.defalut_run(x[0], start_cov, u, z, N)
 
         absdif_filt += np.mean(abs(x - m), axis=0)
         absdif_obs += np.mean(abs(x - z), axis=0)
