@@ -1,11 +1,10 @@
 import numpy as np
 import pandas as pd
-import pymap3d as pm
 import kf_python.unscented_kf as UKF
-import ctrv
-from constants import wheel_r, gyro_static
+from main_project.movement_models import ctrv
+from constants import wheel_r, gyro_static, get_enu_reference
 
-from gps_transform import wgs_to_enu, wgs_to_ecef
+from gps_transform import wgs_to_enu
 
 
 # CTRV State: [x, y, sin(gyro_angle), cos(gyro_angle)]
@@ -28,12 +27,17 @@ def process_speed_ctra(state):
 # 0: Timestamp, 1: Lat, 2: Lon, 3: Pdop, 4: velocity, 5: altitude, 6: orientation,
 # 7: accelX, 8: accelY, 9: accelZ, 10:gyroX, 11: wsrr, 12: wsrl
 def run_ctrv(inputs: np.ndarray):
+    states = []
     current_state = np.array([0, 0, 0, 0])
     current_cov = np.identity(4)
     last_imu_timestamp = 0.
+    reference_ecef = np.zeros(3)
+    reference_matrix = np.zeros((3, 3))
+    initialized = False
     # Control vector: [velocity, yaw speed]
     current_control = np.zeros(2)
-    ukf = UKF.UnscentedKF(process_speed_ctra, measmt_func_spd, np.identity(4), np.identity(2), 4, alpha=np.sqrt(3),
+    current_measurement = np.zeros(4)
+    ukf = UKF.UnscentedKF(process_speed_ctra, measmt_func_spd, np.identity(4), np.identity(4), 4, alpha=np.sqrt(3),
                           beta=2, kappa=1)
     for input in inputs:
         # if sensor (speed) data is available
@@ -45,11 +49,26 @@ def run_ctrv(inputs: np.ndarray):
             last_imu_timestamp = input[0]
         # if GPS data is available
         if not np.isnan(input[2]):
+            # Transform GPS to ENU coordinates
+            gps_radians = np.radians(input[1:3])
+            gps_enu = wgs_to_enu(lat=gps_radians[0], lon=gps_radians[1], alt=0,
+                                 ecef0=reference_ecef, ref_matrix=reference_matrix)
+            current_measurement[:2] = gps_enu[:2]
+            current_measurement[2] = np.sin(np.radians(90 - input[6]))
+            current_measurement[3] = np.cos(np.radians(90 - input[6]))
+            if not initialized:
+                reference_ecef, reference_matrix = get_enu_reference(gps_radians[0], gps_radians[1])
+                current_state = np.array([gps_enu[0], gps_enu[1],
+                                          np.sin(np.radians(90 - input[6])),
+                                          np.cos(np.radians(90 - input[6]))])
+                initialized = True
             # Predict with last velocity and yaw rate, update with last gps
-            current_state, current_control = ukf.propagate(current_state, current_cov,
-                                                           current_control, ctrv.transit_ctrv,
-                                                           input[1:3], ctrv.measmt_func_gps,
-                                                           input[0] - last_imu_timestamp)
+            current_state, current_cov = ukf.propagate(current_state, current_cov,
+                                                       current_control, ctrv.transit_ctrv,
+                                                       current_measurement, ctrv.measmt_func_gps,
+                                                       input[0] - last_imu_timestamp)
+            states.append(np.degrees(ctrv.state_to_latlon(current_state, reference_ecef, reference_matrix)))
+    return states
 
 
 # 0: Timestamp, 1: Lat, 2: Lon, 3: Pdop, 4: velocity, 5: altitude, 6: orientation,
@@ -67,6 +86,9 @@ def run_ctrv(inputs: np.ndarray):
 
 
 if __name__ == '__main__':
-    data = pd.read_csv('res/total.csv')
-    imu = data[['systemTimestamp', 'gyroX']]
-    run(data)
+    data = pd.read_csv('inputs/total.csv')
+    data = data.to_numpy()
+    # imu = data[['systemTimestamp', 'gyroX']]
+    reslist = run_ctrv(data[:3000])
+    res = pd.DataFrame(reslist, columns=['latitude', 'longitude', 'alt'])
+    res.to_csv('results_ctrv.txt')

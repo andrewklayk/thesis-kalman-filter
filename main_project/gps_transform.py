@@ -8,10 +8,19 @@ b: float = 6356752.3142
 e2: float = 1 - (b / a) ** 2
 
 
-# TODO: more precise (ref: muzhik tak skazal) or fast (ref: straya) convertions may exist;
-# they are to be implemented later
+# TODO: more precise (ref: muzhik tak skazal) or fast (ref: straya) conversions may exist
 
-def wgs_to_enu(lat: float, lon: float, alt: float, ecef0: np.ndarray,  ref_matrix: np.ndarray,) -> np.ndarray((3,)):
+def wgs_to_enu(lat: float, lon: float, alt: float, ecef0: np.ndarray, ref_matrix: np.ndarray, ) -> np.ndarray((3,)):
+    """Convert WGS84 coordinates of a point to ENU coordinates with a specified point of reference (0, 0, 0).
+
+    :param lat: Latitude of point IN RADIANS
+    :param lon: Longitude of point IN RADIANS
+    :param alt: Altitude of point (NOT IN RADIANS XDD)))00))0)
+    :param ecef0: Reference point in ECEF coordinates (easy to precalculate)
+    :param ref_matrix: Matrix for ECEF->ENU transformation (easy to precalculate)
+    :return: ENU coordinates of point in an ndarray [x,y,z]
+    :rtype: np.ndarray
+    """
     sp = np.sin(lat)
     cp = np.cos(lat)
     sl = np.sin(lon)
@@ -20,7 +29,38 @@ def wgs_to_enu(lat: float, lon: float, alt: float, ecef0: np.ndarray,  ref_matri
     return ecef_to_enu(ecef0, ecef1, ref_matrix)
 
 
+def wgs_to_ecef_raw(phi: float, lam: float, h: float) -> np.ndarray((3,)):
+    """Convert WGS84 coordinates to ECEF coordinates.
+
+    :param phi: Latitude (IN RADIANS)
+    :param lam: Longitude (IN RADIANS)
+    :param h: height
+    :return: ECEF coordinates in a ndarray [X, Y, Z]
+    :rtype: np.ndarray
+    """
+    sp = np.sin(phi)
+    cp = np.cos(phi)
+    sl = np.sin(lam)
+    cl = np.cos(lam)
+    N = a / (np.sqrt(1 - e2 * (sp ** 2)))
+    temp = (N + h) * cp
+    x = temp * cl
+    y = temp * sl
+    z = (((b / a) ** 2) * N + h) * sp
+    return np.array([x, y, z])
+
+
 def wgs_to_ecef(h: float, sp: float, cp: float, sl: float, cl: float) -> np.ndarray((3,)):
+    """Convert WGS84 coordinates to ECEF coordinates. DON'T FORGET TO CONVERT TO RADIANS!
+
+    :param h: height
+    :param sp: sin latitude
+    :param cp: cos latitude
+    :param sl: sin longitude
+    :param cl: cos longitude
+    :return: ECEF coordinates in a ndarray: [X, Y, Z]
+    :rtype: np.ndarray
+    """
     N = a / (np.sqrt(1 - e2 * (sp ** 2)))
     temp = (N + h) * cp
     x = temp * cl
@@ -34,20 +74,49 @@ def ecef_to_enu(ecef0: np.ndarray, ecef1: np.ndarray, transform_matrix: np.ndarr
     return enu
 
 
-# def ecef_to_enu(ecef0: np.ndarray, ecef1: np.ndarray,
-#                 sp: float, cp: float, sl: float, cl: float) -> np.ndarray((3,)):
-#     m = np.array(
-#         [[-sl, cl, 0],
-#          [-cl * sp, -sl * sp, cp],
-#          [cl * cp, sl * cp, sp]]
-#     )
-#     enu = m @ (ecef1 - ecef0)
-#     return enu
+# Source: ESA
+def enu_to_ecef(ecef0: np.ndarray, enu: np.ndarray, transform_matrix: np.ndarray) -> np.ndarray((3,)):
+    ecef = transform_matrix @ enu + ecef0
+    return ecef
+
+#def ecef_to_wgs_wiki(x: float, y: float, z: float = 0) -> np.ndarray((3,)):
 
 
-def enu_to_ecef():
-    raise NotImplementedError
+# Source: eceftowgs.pdf
+def ecef_to_wgs(x: float, y: float, z: float = 0) -> np.ndarray((3,)):
+    w2 = x ** 2 + y ** 2
+    l = e2 / 2
+    l2 = l ** 2
+    m = w2 / (a ** 2)
+    n = ((1 - e2) * z / b) ** 2
+    p = (m + n - 4 * l2) / 6
+    G = m * n * l2
+    H = 2 * p ** 3 + G
+    # if H < Hmin, abort
+    C = np.cbrt(((H + G + 2 * np.sqrt(H * G)) / 2))
+    i = -(2 * l2 + m + n) / 2
+    P = p ** 2
+    beta = i / 3 - C - P / C
+    k = l2 * (l2 - m - n)
+    t = np.sqrt(np.sqrt(beta ** 2 - k) - (beta + i) / 2) - np.sign(m - n) * np.sqrt(abs((beta - i) / 2))
+    F = t ** 4 + 2 * i * t ** 2 + 2 * l * (m - n) * t + k
+    dFdt = 4 * t ** 3 + 4 * i * t + 2 * l * (m - n)
+    deltat = -F / dFdt
+    u = t + deltat + l
+    v = t + deltat - l
+    w = np.sqrt(w2)
+    phi = np.arctan2(z * u, w * v)
+    deltaw = w * (1 - 1 / u)
+    deltaz = z * (1 - (1 - e2) / v)
+    h = np.sign(u - 1) * np.sqrt(deltaw ** 2 + deltaz ** 2)
+    lam = np.arctan2(y, x)
+    return np.array([phi, lam, h])
+
+def enu_to_wgs(ecef0: np.ndarray, enu: np.ndarray, transform_matrix: np.ndarray) -> np.ndarray((3,)):
+    ecef = enu_to_ecef(ecef0, enu, transform_matrix)
+    return ecef_to_wgs(ecef[0], ecef[1], ecef[2])
 
 
-def ecef_to_wgs():
-    raise NotImplementedError
+if __name__ == '__main__':
+    print(wgs_to_ecef_raw(np.radians(40).item(), np.radians(319).item(), 149.2))
+    # print(ecef_to_wgs(10000, 15000, 150000))

@@ -127,3 +127,23 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+/.idea/diplom.iml
+/main_project/inputs/gps.txt
+/main_project/util/gps_vis.txt
+/main_project/inputs/imu.txt
+/main_project/.idea/mainProject.iml
+/.idea/misc.xml
+/main_project/.idea/misc.xml
+/.idea/modules.xml
+/main_project/.idea/modules.xml
+/main_project/.idea/workspace.xml
+/.idea/workspace.xml
+/.idea/inspectionProfiles/profiles_settings.xml
+/main_project/.idea/inspectionProfiles/profiles_settings.xml
+/.idea/inspectionProfiles/Project_Default.xml
+/main_project/.idea/inspectionProfiles/Project_Default.xml
+/main_project/results_ctrv.txt
+/main_project/inputs/sensors.txt
+/main_project/inputs/total.csv
+/.idea/vcs.xml
+/sources/
