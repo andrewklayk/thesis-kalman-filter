@@ -1,11 +1,29 @@
 import numpy as np
+import pandas as pd
 
 # earth semi-major axis (equatorial radius)
+
 a: float = 6378137
 # earth semi-minor axis (polar radius)
 b: float = 6356752.3142
 # earth first numerical eccentricity
 e2: float = 1 - (b / a) ** 2
+
+
+def create_ref_matrix(sl_0, cl_0, sp_0, cp_0):
+    return np.array(
+        [[-sl_0, cl_0, 0],
+         [-cl_0 * sp_0, -sl_0 * sp_0, cp_0],
+         [cl_0 * cp_0, sl_0 * cp_0, sp_0]]
+    )
+
+
+def get_enu_reference(lat_0, lon_0, h_0=0):
+    sp_0 = np.sin(lat_0)
+    cp_0 = np.cos(lat_0)
+    sl_0 = np.sin(lon_0)
+    cl_0 = np.cos(lon_0)
+    return wgs_to_ecef(h_0, sp_0, cp_0, sl_0, cl_0), create_ref_matrix(sl_0, cl_0, sp_0, cp_0)
 
 
 # TODO: more precise (ref: muzhik tak skazal) or fast (ref: straya) conversions may exist
@@ -79,7 +97,8 @@ def enu_to_ecef(ecef0: np.ndarray, enu: np.ndarray, transform_matrix: np.ndarray
     ecef = transform_matrix @ enu + ecef0
     return ecef
 
-#def ecef_to_wgs_wiki(x: float, y: float, z: float = 0) -> np.ndarray((3,)):
+
+# def ecef_to_wgs_wiki(x: float, y: float, z: float = 0) -> np.ndarray((3,)):
 
 
 # Source: eceftowgs.pdf
@@ -112,11 +131,35 @@ def ecef_to_wgs(x: float, y: float, z: float = 0) -> np.ndarray((3,)):
     lam = np.arctan2(y, x)
     return np.array([phi, lam, h])
 
+
 def enu_to_wgs(ecef0: np.ndarray, enu: np.ndarray, transform_matrix: np.ndarray) -> np.ndarray((3,)):
     ecef = enu_to_ecef(ecef0, enu, transform_matrix)
     return ecef_to_wgs(ecef[0], ecef[1], ecef[2])
 
 
 if __name__ == '__main__':
+    test_wgs = pd.read_csv('inputs/gps.txt', sep=" ")
+    test_wgs = test_wgs[['LAT', 'LON']].to_numpy()
+
+    test_wgstoecef = []
+    i = 0
+    for wgs in test_wgs:
+        gpsr = np.radians(wgs)
+        test_wgstoecef.append(wgs_to_ecef(0, np.sin(gpsr[0]), np.cos(gpsr[0]), np.sin(gpsr[1]), np.cos(gpsr[1])))
+        i += 1
+
+    test_wgstoenu = []
+    gps_radians = np.radians(test_wgs[0])
+    reference_ecef, reference_matrix = get_enu_reference(gps_radians[0], gps_radians[1])
+    for wgs in test_wgs:
+        gps_radians = np.radians(wgs)
+        gps_enu = wgs_to_enu(gps_radians[0], gps_radians[1], alt=0,
+                             ecef0=reference_ecef, ref_matrix=reference_matrix)
+        test_wgstoenu.append(gps_enu)
+
+    test_enutowgs = []
+    for enu in test_wgstoenu:
+        test_enutowgs.append(np.degrees(enu_to_wgs(reference_ecef, enu, reference_matrix.T)))
+    pd.DataFrame(test_enutowgs, columns=['latitude', 'longitude', 'alt']).to_csv('test_enu_to_wgs.txt')
     print(wgs_to_ecef_raw(np.radians(40).item(), np.radians(319).item(), 149.2))
     # print(ecef_to_wgs(10000, 15000, 150000))
