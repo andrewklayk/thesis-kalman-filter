@@ -4,17 +4,17 @@ import matplotlib.pyplot as plt
 from unscented_kf import UnscentedKF
 
 # State transition error covariance matrix
-R = np.array([[0.25, 0],
-              [0, 0.25]])
+R = np.array([[156, 0],
+              [0, 156]])
 
 # Observation error covariance matrix
-Q = np.array([[1.2, 0.25],
-              [0.25, 1.2]])
+Q = np.array([[25, 0],
+              [0, 25]])
 
 
 def tr_f(x, u, delta_t=1):
     noise = rng.multivariate_normal([0, 0], R)
-    return x + u ** 2 + noise
+    return x**2 / u**3 + noise
 
 
 def obs_f(x):
@@ -22,17 +22,17 @@ def obs_f(x):
 
 
 if __name__ == '__main__':
-    N = 100  # Number of observations / timeframes
+    N = 5  # Number of observations / timeframes
     n = 2  # Dimension of the state vector X:
     x = np.zeros((N, n))
     z = np.zeros((N, n))
-    x[0] = [5, 5]
-    z[0] = [5, 5]
-    u = np.ones(N) * 1 + np.random.normal(0, 2, N)  # Control vector
+    x[0] = [4, 4]
+    z[0] = [4, 4]
+    u = np.arange(N)  # Control vector
 
     rng = np.random.default_rng()
 
-    NUM_EXPERIMENTS = 5
+    NUM_EXPERIMENTS = 100
     absdif_filt = absdif_obs = 0
 
     kf = UnscentedKF(f=tr_f, h=obs_f, R=R, Q=Q, L=n, alpha=np.sqrt(3), beta=2, kappa=1)
@@ -40,11 +40,11 @@ if __name__ == '__main__':
     for exp in range(NUM_EXPERIMENTS):
         # Generate true state based on initial state and state transition error
         for i in range(N - 1):
-            x[i + 1] = tr_f(x[i], u[i + 1])
+            x[i + 1] = x[i]**2 / u[i+1]**2  # tr_f(x[i], u[i + 1])
             z[i + 1] = obs_f(x[i + 1])
 
-        start_cov = R
-        m, c = kf.defalut_run(x[0], start_cov, u, z, N)
+        start_cov = Q
+        m, c = kf.default_run(x[0], start_cov, u, z, N)
 
         absdif_filt += np.mean(abs(x - m), axis=0)
         absdif_obs += np.mean(abs(x - z), axis=0)

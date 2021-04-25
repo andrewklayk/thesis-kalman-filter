@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from linear_kf import LinearKF
 
 if __name__ == '__main__':
-    N = 100  # Number of observations / timeframes
+    N = 50  # Number of observations / timeframes
     n = 2  # Dimension of the state vector X: [x,v] - position and velocity
     x = np.zeros((N, n))
     x[0] = [0, 20]
@@ -17,10 +17,10 @@ if __name__ == '__main__':
     rng = np.random.default_rng()
 
     # State transition error covariance matrix
-    R = np.array([[400, 0], [0, 25]])
+    R = np.array([[50, 0], [0, 15]])
 
     # Observation error covariance matrix
-    Q = np.array([[625, 0],
+    Q = np.array([[100, 0],
                   [0, 36]])
 
     NUM_EXPERIMENTS = 100
@@ -54,8 +54,8 @@ if __name__ == '__main__':
     plt.plot(np.arange(N), z.T[0], marker='+', linestyle='dashed', label='observed x')
     plt.legend(title='Legend:')
     plt.subplot(212)
-    plt.plot(np.arange(N), x.T[1], marker='o', label='real v')
-    plt.plot(np.arange(N), m.T[1], marker='x', linestyle='dashed', label='filtered v')
-    plt.plot(np.arange(N), z.T[1], marker='+', linestyle='dashed', label='observed v')
-    plt.legend(title='Legend:')
+    plt.plot(np.arange(N), x.T[1], marker='o', label='Справжнє значення')
+    plt.plot(np.arange(N), m.T[1], marker='x', linestyle='dashed', label='Результати фільтру')
+    plt.plot(np.arange(N), z.T[1], marker='+', linestyle='dashed', label='Спостереження')
+    plt.legend(title='Позначення')
     plt.show()

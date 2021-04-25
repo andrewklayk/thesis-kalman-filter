@@ -11,6 +11,8 @@ from main_project.gps_transform import enu_to_wgs
 def measmt_func_gps(state: np.ndarray):
     return state
 
+# def measmt_func_spd(state: np.ndarray):
+#     return state[]
 
 def transit_ctrv(state: np.ndarray, u: np.ndarray, delta_t: float) -> np.ndarray:
     """State transition function for CTRV model.
@@ -22,13 +24,13 @@ def transit_ctrv(state: np.ndarray, u: np.ndarray, delta_t: float) -> np.ndarray
     :returns: new state [x, y, sin(angle), cos(angle)]
     """
     v = u[0]
-    w = u[1]
+    w = -u[1]
     new_state = np.empty_like(state)
     new_state[:] = state
     if abs(w) < 1e-6:
         new_state += [
-            v * state[2] * delta_t,
             v * state[3] * delta_t,
+            v * state[2] * delta_t,
             0,
             0
         ]

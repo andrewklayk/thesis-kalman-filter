@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 
 # earth semi-major axis (equatorial radius)
-
 a: float = 6378137
 # earth semi-minor axis (polar radius)
 b: float = 6356752.3142
@@ -137,9 +136,18 @@ def enu_to_wgs(ecef0: np.ndarray, enu: np.ndarray, transform_matrix: np.ndarray)
     return ecef_to_wgs(ecef[0], ecef[1], ecef[2])
 
 
+def gen_test_enu(size: int):
+    data = []
+    for i in range(size):
+        data.append(np.array([i, 2*i, 0]))
+    return data
+
+
 if __name__ == '__main__':
     test_wgs = pd.read_csv('inputs/gps.txt', sep=" ")
     test_wgs = test_wgs[['LAT', 'LON']].to_numpy()
+
+    test_enu = gen_test_enu(size=1000)
 
     test_wgstoecef = []
     i = 0
@@ -151,6 +159,12 @@ if __name__ == '__main__':
     test_wgstoenu = []
     gps_radians = np.radians(test_wgs[0])
     reference_ecef, reference_matrix = get_enu_reference(gps_radians[0], gps_radians[1])
+
+    test_enu_to_wgs_fake = []
+    for t in test_enu:
+        test_enu_to_wgs_fake.append(np.degrees(enu_to_wgs(reference_ecef, t, reference_matrix.T)))
+    pd.DataFrame(test_enu_to_wgs_fake, columns=['latitude', 'longitude', 'alt']).to_csv('test_enu.txt')
+
     for wgs in test_wgs:
         gps_radians = np.radians(wgs)
         gps_enu = wgs_to_enu(gps_radians[0], gps_radians[1], alt=0,
