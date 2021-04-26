@@ -25,8 +25,6 @@ def get_enu_reference(lat_0, lon_0, h_0=0):
     return wgs_to_ecef(h_0, sp_0, cp_0, sl_0, cl_0), create_ref_matrix(sl_0, cl_0, sp_0, cp_0)
 
 
-# TODO: more precise (ref: muzhik tak skazal) or fast (ref: straya) conversions may exist
-
 def wgs_to_enu(lat: float, lon: float, alt: float, ecef0: np.ndarray, ref_matrix: np.ndarray, ) -> np.ndarray((3,)):
     """Convert WGS84 coordinates of a point to ENU coordinates with a specified point of reference (0, 0, 0).
 
@@ -86,6 +84,7 @@ def wgs_to_ecef(h: float, sp: float, cp: float, sl: float, cl: float) -> np.ndar
     return np.array([x, y, z])
 
 
+# Source: ESA
 def ecef_to_enu(ecef0: np.ndarray, ecef1: np.ndarray, transform_matrix: np.ndarray) -> np.ndarray((3,)):
     enu = transform_matrix @ (ecef1 - ecef0)
     return enu
@@ -95,10 +94,6 @@ def ecef_to_enu(ecef0: np.ndarray, ecef1: np.ndarray, transform_matrix: np.ndarr
 def enu_to_ecef(ecef0: np.ndarray, enu: np.ndarray, transform_matrix: np.ndarray) -> np.ndarray((3,)):
     ecef = transform_matrix @ enu + ecef0
     return ecef
-
-
-# def ecef_to_wgs_wiki(x: float, y: float, z: float = 0) -> np.ndarray((3,)):
-
 
 # Source: eceftowgs.pdf
 def ecef_to_wgs(x: float, y: float, z: float = 0) -> np.ndarray((3,)):
@@ -110,7 +105,6 @@ def ecef_to_wgs(x: float, y: float, z: float = 0) -> np.ndarray((3,)):
     p = (m + n - 4 * l2) / 6
     G = m * n * l2
     H = 2 * p ** 3 + G
-    # if H < Hmin, abort
     C = np.cbrt(((H + G + 2 * np.sqrt(H * G)) / 2))
     i = -(2 * l2 + m + n) / 2
     P = p ** 2

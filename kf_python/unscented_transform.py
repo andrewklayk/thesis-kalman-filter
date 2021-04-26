@@ -3,11 +3,30 @@ import numpy as np
 from scipy.linalg import cholesky
 
 
-def calculate_lambda(L: int, alpha: float = 1, k: float = 0):
+def calculate_lambda(L: int, alpha: float = 1, k: float = 0) -> float:
+    """
+    Calculate the Lambda parameter for unscented transform.
+
+    :param L: dimension of the distribution
+    :param alpha: primary scaling parameter
+    :param k: secondary scaling parameter
+    :return: calculated value of parameter lambda
+    :rtype: float
+    """
     return (alpha ** 2) * (L + k) - L
 
 
-def calc_weights(alpha: float, beta: float, L: int, _lambda: float):
+def calc_weights(alpha: float, beta: float, L: int, _lambda: float) -> tuple:
+    """
+    Calculate weights for unscented transform.
+
+    :param alpha: primary scaling parameter
+    :param beta: prior distribution information parameter
+    :param L: dimension of the distribution
+    :param _lambda: parameter lambda
+    :return: tuple of weights w_m and w_c
+    :rtype: tuple
+    """
     w_m = np.full(shape=(2 * L + 1), fill_value=1 / (2 * (L + _lambda)))
     w_m[0] = _lambda / (L + _lambda)
     w_c = np.empty_like(w_m)
@@ -16,12 +35,9 @@ def calc_weights(alpha: float, beta: float, L: int, _lambda: float):
     return w_m, w_c
 
 
-def calc_sigma_points(x_mean: np.array, x_cov: np.array, _lambda: float):
+def calc_sigma_points(x_mean: np.array, x_cov: np.array, _lambda: float) -> np.ndarray:
     dim: int = x_mean.shape[0]
     matrix = (dim + _lambda) * x_cov
-    # u, s, vh = np.linalg.svd(matrix)
-    # s[s < 0] = 1e-5
-    # matrix = (u * s) @ vh
     eigval, eigvec = np.linalg.eig(matrix)
     if len(eigval[eigval < 0]) > 0:
         eigval[eigval <= 0] = 1e-4
