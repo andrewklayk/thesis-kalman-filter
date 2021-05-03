@@ -35,7 +35,6 @@ def run_CTRV(inputs: np.ndarray):
     reference_matrix = np.zeros((3, 3))
     reference_matrix_T = np.zeros((3, 3))
     initialized = False
-    # Control vector: [velocity, yaw speed]
     current_control = np.zeros(2)
     current_measurement = np.zeros(4)
     ukf = ukfilter.UnscentedKF(process_speed_ctra, measmt_func_spd, np.identity(4) * 1e-9, np.identity(4) * 1e-4, 4,

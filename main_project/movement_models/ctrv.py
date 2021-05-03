@@ -11,8 +11,11 @@ from main_project.gps_transform import enu_to_wgs
 def measmt_func_gps(state: np.ndarray):
     return state
 
+
+# Speed measurement function
 def measmt_func_spd(state: np.ndarray):
     return state[2]
+
 
 def transit_ctrv(state: np.ndarray, u: np.ndarray, delta_t: float) -> np.ndarray:
     """State transition function for CTRV model.

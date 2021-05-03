@@ -95,7 +95,7 @@ def enu_to_ecef(ecef0: np.ndarray, enu: np.ndarray, transform_matrix: np.ndarray
     ecef = transform_matrix @ enu + ecef0
     return ecef
 
-# Source: eceftowgs.pdf
+# Source: accurate_conversion...
 def ecef_to_wgs(x: float, y: float, z: float = 0) -> np.ndarray((3,)):
     w2 = x ** 2 + y ** 2
     l = e2 / 2
