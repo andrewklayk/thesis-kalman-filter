@@ -1,5 +1,6 @@
 import numpy as np
-from main_project.gps_transform import wgs_to_enu, wgs_to_ecef
+
+from main_project.gps_transform import wgs_to_ecef
 
 # Wheel radius:
 wheel_r = 0.376

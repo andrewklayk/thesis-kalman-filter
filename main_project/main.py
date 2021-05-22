@@ -1,27 +1,10 @@
 import numpy as np
 import pandas as pd
+
 import kf_python.unscented_kf as ukfilter
-from main_project.movement_models import ctrv, ctra
 from constants import wheel_r, gyro_static, get_enu_reference
-
 from gps_transform import wgs_to_enu
-
-
-# CTRV State: [x, y, sin(gyro_angle), cos(gyro_angle)]
-# CTRV Control: velocity (sensors); turn_rate (imu)
-# CTRV Measurement: x, y (gps)
-
-# CTRA State: [x, y, v, sin(gyro_angle), cos(gyro_angle)]
-# CTRA Control: acceleration (imu); turn_rate (imu)
-# CTRA Measurement: x, y (gps); velocity (sensors)
-
-# Speed measurement function (only for CTRA, in CTRV speed is one of the controls)
-def measmt_func_spd(state: np.ndarray):
-    return state[3]
-
-
-def process_speed_ctra(state):
-    raise NotImplementedError
+from main_project.movement_models import ctrv
 
 
 # 0: Timestamp, 1: Lat, 2: Lon, 3: Pdop, 4: velocity, 5: altitude, 6: orientation,
@@ -37,12 +20,12 @@ def run_CTRV(inputs: np.ndarray):
     initialized = False
     current_control = np.zeros(2)
     current_measurement = np.zeros(4)
-    ukf = ukfilter.UnscentedKF(process_speed_ctra, measmt_func_spd, np.identity(4) * 1e-9, np.identity(4) * 1e-4, 4,
+    ukf = ukfilter.UnscentedKF(ctrv.transit_ctrv, ctrv.measmt_func_spd, np.identity(4) * 1e-9, np.identity(4) * 1e-4, 4,
                                alpha=1, beta=0, kappa=3)
     for input in inputs:
         # if sensor (speed) data is available
         if not (np.isnan(input[11]) or np.isnan(input[12])):
-            current_control[0] = ((input[11] + input[12]) / 2) * wheel_r#input[13]  #
+            current_control[0] = ((input[11] + input[12]) / 2) * wheel_r  # input[13]
         # if IMU (yaw rate) data is available
         if not np.isnan(input[10]):
             current_control[1] = input[10] - gyro_static
@@ -53,7 +36,7 @@ def run_CTRV(inputs: np.ndarray):
             gps_enu = wgs_to_enu(lat=gps_radians[0], lon=gps_radians[1], alt=0,
                                  ecef0=reference_ecef, ref_matrix=reference_matrix)
             current_measurement[:2] = gps_enu[:2]
-            gps_orient = np.radians(90-input[6])
+            gps_orient = np.radians(90 - input[6])
             current_measurement[2] = np.sin(gps_orient)
             current_measurement[3] = np.cos(gps_orient)
             # Setup initial state and ENU reference

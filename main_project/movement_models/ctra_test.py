@@ -1,12 +1,11 @@
-import os
-
 import numpy as np
 import pandas as pd
 
-import kf_python.unscented_kf as UKF
+from main_project.constants import gyro_static
 from main_project.gps_transform import wgs_to_enu, get_enu_reference
 from main_project.movement_models import ctra
-from main_project.constants import gyro_static
+
+
 def measmt_func_spd(state: np.ndarray):
     return state[3]
 def process_speed_ctra(state):

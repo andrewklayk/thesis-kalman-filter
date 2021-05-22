@@ -1,6 +1,3 @@
-import math
-import os
-
 import numpy as np
 import pandas as pd
 
@@ -44,6 +41,48 @@ def test_ctrv_fake_data(start, inp):
 
 
 def test_ctrv_real_data(inputs: np.ndarray):
+    states = []
+    states_enu = []
+    current_state = np.zeros(4)
+    last_predict = 0.
+    reference_ecef = np.zeros(3)
+    reference_matrix_T = np.zeros((3, 3))
+    current_measurement = np.zeros(4)
+    initialized = False
+    # Control vector: [velocity, yaw speed]
+    current_control = np.zeros(2)
+    for input in inputs:
+        # if sensor (speed) data is available
+        if not (np.isnan(input[11]) or np.isnan(input[12])):
+            current_control[0] = input[13]
+        # if IMU (yaw rate) data is available
+        if not np.isnan(input[10]):
+            current_control[1] = input[10] - gyro_static
+        # if GPS data is available
+        if not np.isnan(input[2]):
+            if not initialized:
+                last_predict = input[0]
+                # Transform GPS to ENU coordinates
+                gps_radians = np.radians(input[1:3])
+                # Setup initial state and ENU reference
+                reference_ecef, reference_matrix = get_enu_reference(gps_radians[0], gps_radians[1])
+                gps_enu = wgs_to_enu(lat=gps_radians[0], lon=gps_radians[1], alt=0,
+                                     ecef0=reference_ecef, ref_matrix=reference_matrix)
+                current_measurement[:2] = gps_enu[:2]
+                gps_orient = np.radians(90-input[6])
+                current_measurement[2] = np.sin(gps_orient)
+                current_measurement[3] = np.cos(gps_orient)
+                reference_matrix_T = reference_matrix.T
+                current_state = current_measurement
+                initialized = True
+            current_state = ctrv.transit_ctrv(current_state, current_control, (input[0] - last_predict) * 1e-6)
+            last_predict = input[0]
+            states_enu.append(current_state)
+            states_gps = np.degrees(ctrv.state_to_latlon(current_state, reference_ecef, reference_matrix_T))
+            states.append(states_gps)
+    return states
+
+def test_ctrv_real_data_new(inputs: np.ndarray):
     states = []
     states_enu = []
     current_state = np.zeros(4)
